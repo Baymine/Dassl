@@ -68,11 +68,13 @@ def extend_cfg(cfg):
     """
     # pass
     from yacs.config import CfgNode as CN
-    cfg.TRAINER.MyExp = CN()
-    cfg.TRAINER.MyExp.G_ARCH = "FeatureSplitNet"
-    cfg.TRAINER.MyExp.WARMUP = 3
-    cfg.TRAINER.MyExp.LMDA = 0.3
-    cfg.TRAINER.MyExp.SPLITNET = "SplitNet"
+    cfg.TRAINER.SplitNet = CN()
+    cfg.TRAINER.SplitNet.G_ARCH = "FeatureSplitNet"
+    cfg.TRAINER.SplitNet.WARMUP = 3
+    cfg.TRAINER.SplitNet.LMDA = 0.3
+    cfg.TRAINER.SplitNet.SPLITNET = "SplitNet"
+    cfg.TRAINER.SplitNet.Chunks = 2   # 子特征分割块数
+    cfg.TRAINER.SplitNet.usingGlobalAvg = 2  # 是否使用全局池化
 
 
 def setup_cfg(args):

@@ -16,24 +16,24 @@ DATA=~/kaiyang/data
 # --output-dir output/Split_globalAve
 
 # On Pacs
-# CUDA_VISIBLE_DEVICES=0 python tools/train.py \
-# --root $DATA \
-# --trainer Split \
-# --source-domains cartoon photo sketch \
-# --target-domains art_painting \
-# --dataset-config-file configs/datasets/dg/pacs.yaml \
-# --config-file configs/trainers/dg/myExp/pacs.yaml \
-# --output-dir output/output/delete3
-
-# On office-home
 CUDA_VISIBLE_DEVICES=0 python tools/train.py \
 --root $DATA \
 --trainer Split \
---source-domains art clipart product \
---target-domains real_world \
---dataset-config-file configs/datasets/dg/office_home_dg.yaml \
---config-file configs/trainers/dg/myExp/office_home.yaml \
---output-dir output/office_home/delete3
+--source-domains cartoon photo sketch \
+--target-domains art_painting \
+--dataset-config-file configs/datasets/dg/pacs.yaml \
+--config-file configs/trainers/dg/myExp/pacs_split.yaml \
+--output-dir output/test
+
+# On office-home
+# CUDA_VISIBLE_DEVICES=0 python tools/train.py \
+# --root $DATA \
+# --trainer Split \
+# --source-domains art clipart product \
+# --target-domains real_world \
+# --dataset-config-file configs/datasets/dg/office_home_dg.yaml \
+# --config-file configs/trainers/dg/myExp/office_home.yaml \
+# --output-dir output/office_home/delete3
 
 ########### Multi-source #############
 # CUDA_VISIBLE_DEVICES=0 python tools/train.py \

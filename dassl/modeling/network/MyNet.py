@@ -49,10 +49,6 @@ class CLS(nn.Module):
     def forward(self, x):
         # out = [x]
         out = self.flatten(x)
-        # print("*******************")
-        # print(out.shape)
-        # # print(torch.chunk(x, 2, dim=2)[0].shape)
-        # print("*******************")
         out = self.fc(out)
         return self.softmax(out)
 
@@ -64,21 +60,21 @@ class CLS(nn.Module):
 
 class featureSplitNet(nn.Module):
     def __init__(self):
-        super().__init__()
+        super().__init__(cfg)
         self.featureExtractor = resnetFeatureExtractor()
         self.classifier_train = CLS(self.featureExtractor.fletch() // 2, 7)
         self.classifier_eval = CLS(self.featureExtractor.fletch(), 7)
 
-    def splitFeature(self, feature, chunks=2, dim=2):
+    def splitFeature(self, feature, chunks= 2,dim=2):
         (x1, x2) = torch.chunk(feature, chunks, dim=dim)
         return x1, x2
 
-    def forward(self, x, mode="train", glob=False):
+    def forward(self, x, mode="train", glob=False, chunks=2):
         """
         mode = train/test/self-test
         """
         x = self.featureExtractor(x)
-        x1, x2 = self.splitFeature(x)
+        x1, x2 = self.splitFeature(x, chunks)
 
         # feature = x2
 

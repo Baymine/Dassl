@@ -15,7 +15,7 @@ OPTIM:
   MAX_EPOCH: 18
 
 TRAINER:
-  MyExp:
+  SplitNet:
     G_ARCH: "FeatureSplitNet"
     SPLITNET: "SplitNet"
     WARMUP: 3

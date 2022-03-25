@@ -1,5 +1,5 @@
 # Dassl
-
+Note: This toolbox is private version of [Dassl](https://github.com/KaiyangZhou/Dassl.pytorch)
 ## Introduction
 
 Dassl is a [PyTorch](https://pytorch.org) toolbox initially developed for our project [Domain Adaptive Ensemble Learning (DAEL)](https://arxiv.org/abs/2003.07325) to support research in domain adaptation and generalization---since in DAEL we study how to unify these two problems in a single learning framework. Given that domain adaptation is closely related to semi-supervised learning---both study how to exploit unlabeled data---we also incorporate components that support research for the latter.

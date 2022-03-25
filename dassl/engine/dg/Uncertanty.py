@@ -75,28 +75,14 @@ class Split(TrainerX):
     def forward_backward(self, batch):
         input, label, domain = self.parse_batch_train(batch)
         out1, out2 = self.model(input, mode="train")
-        # teacher = self.model(input, mode="test")
-        # out = (out1 + out2)/2
-
-        # loss_split = 0.5*F.cross_entropy(out1, teacher) + 0.5*F.cross_entropy(out2, out1)
-        # loss_split = 0.5 * F.cross_entropy(out, teacher) + 0.5 * F.cross_entropy(out, label)
-        # loss_split = 0.5 * F.cross_entropy(out1, label) \
-        #              + 0.5 * F.cross_entropy(out2, label)
-        # loss_teacher = F.cross_entropy(teacher, label)
         
         loss1 = F.cross_entropy(out1, label)
         loss2 = F.cross_entropy(out2, label)
         
         loss_g = 0
-        # if(self.batch_idx < self.num_batches//2):
         if self.epoch <= self.max_epoch//2:
-            # lamb = 0.5 * self.epoch/self.max_epoch
-            # loss_g += ((1-lamb) * loss_teacher + lamb * loss_split)
             loss_g += loss1
         else:
-            # loss_g += loss_split
-            # lamb = self.epoch/self.max_epoch
-            # loss_g += ((1 - lamb) * loss_teacher + lamb * loss_split)
             loss_g += (loss1 - loss2)
 
         self.model_backward_and_update(loss_g, "model")

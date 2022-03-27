@@ -9,7 +9,7 @@ from dassl.engine.trainer import SimpleNet
 # 想要将这些类在算法运行之前就加入到注册表中，
 # 需要修改本文件夹下的__init__.py文件，将对应的类名导入
 @TRAINER_REGISTRY.register()
-class Uncertanty(TrainerX):
+class Uncertainty(TrainerX):
     def __init__(self, cfg):
         super().__init__(cfg)
         self.device = "cuda"
@@ -18,35 +18,38 @@ class Uncertanty(TrainerX):
         cfg = self.cfg
 
         print("Building Feature Extractor")
-        self.featureExtractor = build_network(cfg.TRAINER.SplitNet.G_ARCH, verbose=cfg.VERBOSE)
-        self.featureExtractor.to(self.device)
-        print("# params: {:,}".format(count_num_param(self.featureExtractor)))
-        self.optim_F = build_optimizer(self.featureExtractor, cfg.OPTIM)
-        self.sched_F = build_lr_scheduler(self.optim, cfg.OPTIM)
-        self.register_model("featureExtractor",
-            self.featureExtractor, self.optim_F, self.sched_F)
+        self.Uncertainty = build_network(cfg.TRAINER.Uncertainty.G_ARCH, verbose=cfg.VERBOSE)
+        self.Uncertainty.to(self.device)
+        print("# params: {:,}".format(count_num_param(self.Uncertainty)))
+        self.optim_U = build_optimizer(self.Uncertainty, cfg.OPTIM)
+        self.sched_U = build_lr_scheduler(self.optim_U, cfg.OPTIM)
+        self.register_model("Uncertainty",
+            self.Uncertainty, self.optim_U, self.sched_U)
 
-        print("Building discriminator")
-        self.dis = SimpleNet(cfg, cfg.Model, self.num_source_domains)
-        self.dis.to(self.device)
-        print("# params: {:,}".format(count_num_param(self.dis)))
-        self.optim_cls = build_optimizer(self.dis, cfg.OPTIM)
-        self.sched_cls = build_lr_scheduler(
-            self.optim_cls, cfg.OPTIM
-        )
-        self.register_model(
-            "dis", self.dis, self.optim_cls, self.sched_cls
-        )
+        # print("Building discriminator")
+        # # self.classifier = SimpleNet(cfg, cfg.Model, self.num_source_domains)
+        # self.classifier = CLS(512, self.num_classes)
+        # self.classifier.to(self.device)
+        # print("# params: {:,}".format(count_num_param(self.classifier)))
+        # self.optim_cls = build_optimizer(self.classifier, cfg.OPTIM)
+        # self.sched_cls = build_lr_scheduler(
+        #     self.optim_cls, cfg.OPTIM
+        # )
+        # self.register_model(
+        #     "classifier", self.classifier, 
+        #     self.optim_cls, self.sched_cls
+        # )
 
-        print("")
+        # print("")
 
 
     def forward_backward(self, batch):
         input, label, domain = self.parse_batch_train(batch)
-        out = self.featureExtractor(input)
+        out = self.Uncertainty(input)
+        # pred = self.classifier(out)
         loss_g = 0
         loss_g += F.cross_entropy(out, label)
-        self.model_backward_and_update(loss_g, "model")
+        self.model_backward_and_update(loss_g, "Uncertainty")
 
         loss_summary = {"loss_g":loss_g.item()}
         if (self.batch_idx + 1) == self.num_batches:
@@ -54,7 +57,8 @@ class Uncertanty(TrainerX):
         return loss_summary
     
     def model_inference(self, input):
-        return self.featureExtractor(input)
+        return self.Uncertainty(input)
+
 
 @TRAINER_REGISTRY.register()
 class Split(TrainerX):

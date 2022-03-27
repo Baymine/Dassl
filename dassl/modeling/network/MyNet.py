@@ -4,6 +4,7 @@ import torch.nn as nn
 from torchvision import models
 
 from .build import NETWORK_REGISTRY
+import random
 
 
 # Feature extractor
@@ -31,9 +32,11 @@ class resnetFeatureExtractor(nn.Module):
 class bottleNet(nn.Module):
     def __init__(self, in_dim, bottle_net_dim=256):
         super(bottleNet, self).__init__()
+        self.Flatten = nn.Flatten(1,3)
         self.bottleNet = nn.Linear(in_dim, bottle_net_dim)
 
     def forward(self, x):
+        x = self.Flatten(x)
         x = self.bottleNet(x)
         return x
 
@@ -49,14 +52,9 @@ class CLS(nn.Module):
     def forward(self, x):
         # out = [x]
         out = self.flatten(x)
+
         out = self.fc(out)
         return self.softmax(out)
-
-        for module in self.main.children():
-            x = module(x)
-            out.append(x)
-        return out
-
 
 class featureSplitNet(nn.Module):
     def __init__(
@@ -121,47 +119,65 @@ class featureSplitNet(nn.Module):
         elif mode == "self-test":
             return (x1 + x2)/2
 
-def uncertantyModeling(feature):
-    mu = torch.mean(feature, (2, 3))
-    sigma = torch.var(feature, (2, 3))
-
-    Sigma_mu = torch.var(mu, dim=0)
-    Sigma_sigma = torch.var(sigma, dim=0)
-
-    epsilon_mu = torch.randn(Sigma_mu.shape)
-    epsilon_sigma = torch.randn(Sigma_sigma.shape)
-
-    beta = mu + torch.mul(epsilon_mu, Sigma_mu)
-    gamma = sigma + torch.mul(epsilon_sigma, Sigma_sigma)
-
-    sigma = sigma.unsqueeze(2).unsqueeze(3)
-    mu = mu.unsqueeze(2).unsqueeze(3)
-    gamma = gamma.unsqueeze(2).unsqueeze(3)
-    beta = beta.unsqueeze(2).unsqueeze(3)
-
-    return torch.mul(gamma, (feature - mu)/sigma) + beta
-
-class UncertantyNet(nn.Module):
-    def __init__(self):
-        super().__init__(UncertantyNet, self)
+class UncertaintyNet(nn.Module):
+    def __init__(
+        self, num_classes = 7
+    ):
+        super().__init__()
         self.featureExtractor = resnetFeatureExtractor()
         self.fc_in = self.featureExtractor.fletch()
         # self.classifier = CLS(self.fc_in, 7)
         # self.discriminator = CLS(self.fc_in, 7)
         self.bottle = bottleNet(self.fc_in * 2, self.fc_in)
-        self.adaAvePooling = F.adaptive_avg_pool2d()
+        # self.adaAvePooling = F.adaptive_avg_pool2d
+        self.prob = 0.5
+        self.cls = CLS(self.fc_in, num_classes)
+
+    def uncertaintyModeling(self, feature, eps=1e-6):
+        mu = torch.mean(feature, (2, 3))
+        sigma = torch.var(feature, (2, 3))
+
+        Sigma_mu = torch.var(mu, dim=0)
+        Sigma_sigma = torch.var(sigma, dim=0)
+
+        epsilon_mu = torch.randn(Sigma_mu.shape)
+        epsilon_sigma = torch.randn(Sigma_sigma.shape)
+
+        # 让所有的变量都在GPU中
+        epsilon_mu = epsilon_mu.cuda()
+        epsilon_sigma = epsilon_sigma.cuda()
+
+        beta = mu + torch.mul(epsilon_mu, Sigma_mu)
+        gamma = sigma + torch.mul(epsilon_sigma, Sigma_sigma)
+
+        sigma = sigma.unsqueeze(2).unsqueeze(3)
+        mu = mu.unsqueeze(2).unsqueeze(3)
+        gamma = gamma.unsqueeze(2).unsqueeze(3)
+        beta = beta.unsqueeze(2).unsqueeze(3)
+
+        return torch.mul(gamma, (feature - mu)/(sigma+eps)) + beta
 
     def forward(self, x):
-        x = self.featureExtractor(x, mode="uncertanty")
-        x1 = uncertantyModeling(x)
-        x2 = uncertantyModeling(x)
+        self.prob = 1
+        x = self.featureExtractor(x, mode="uncertanty") # B 512 7 7
+
+        # if random.random() <= self.prob:
+        if 1:
+            x1 = self.uncertaintyModeling(x)
+            x2 = self.uncertaintyModeling(x)
+        else:
+            x1 = x
+            x2 = x
+
         x = torch.cat((x1, x2), dim=1)
         x = F.adaptive_avg_pool2d(x, (1, 1)) # B 1026 1 1
-        x = self.bottle(x)  # B 512 1 1
+        x = self.bottle(x)  # B 512
+
+        # x = torch.squeeze(x) # B 512
+        B, C = x.shape
+        x = x.view(B, C, 1, 1)
+        x = self.cls(x)
         return x
-
-
-
 
 @NETWORK_REGISTRY.register()
 def FeatureSplitNet(**kwargs):
@@ -174,7 +190,7 @@ def SplitNet(**kwargs):
     return SpNet
 
 @NETWORK_REGISTRY.register()
-def uncertantyNet(**kwargs):
-    net = uncertantyNet()
+def Uncertainty(**kwargs):
+    net = UncertaintyNet()
     return net
 

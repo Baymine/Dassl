@@ -86,6 +86,11 @@ def extend_cfg(cfg):
     cfg.TRAINER.SplitNet.Chunks = 2   # 子特征分割块数
     cfg.TRAINER.SplitNet.usingGlobalAvg = 0  # 是否使用全局池化
 
+    # Uncertanty parameters
+    cfg.TRAINER.Uncertainty = CN()
+    cfg.TRAINER.Uncertainty.G_ARCH = ""
+    cfg.TRAINER.Uncertainty.PROB = 0.5
+
 
 def setup_cfg(args):
     cfg = get_cfg_default()

@@ -1,17 +1,14 @@
 import argparse
 import torch
 
+#import sys
+#sys.path.append("root/Dassl2")
 import sys
-# sys.path.append("E:\\DeepLearning\\Dassl.pytorch")
-sys.path.append("E:\\Dassl2")
-
-##### 在Linux下，将当前文件添加到系统路径中
-# import sys
-# import os
-# curPath = os.path.abspath(os.path.dirname(__file__))
-# rootPath = os.path.split(curPath)[0]
-# #sys.path.append(rootPath)
-# sys.path.insert(0, rootPath)
+import os
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+#sys.path.append(rootPath)
+sys.path.insert(0, rootPath)
 
 from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default

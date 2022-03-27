@@ -18,7 +18,7 @@ class Uncertanty(TrainerX):
         cfg = self.cfg
 
         print("Building Feature Extractor")
-        self.featureExtractor = build_network(cfg.TRAINER.MyExp.G_ARCH, verbose=cfg.VERBOSE)
+        self.featureExtractor = build_network(cfg.TRAINER.SplitNet.G_ARCH, verbose=cfg.VERBOSE)
         self.featureExtractor.to(self.device)
         print("# params: {:,}".format(count_num_param(self.featureExtractor)))
         self.optim_F = build_optimizer(self.featureExtractor, cfg.OPTIM)
@@ -65,7 +65,8 @@ class Split(TrainerX):
 
     def build_model(self):
         cfg = self.cfg
-        self.model = build_network(cfg.TRAINER.MyExp.SPLITNET, verbose=cfg.VERBOSE)
+
+        self.model = build_network(cfg.TRAINER.SplitNet.SPLITNET, verbose=cfg.VERBOSE)
         self.model.to(self.device)
 
         self.optim = build_optimizer(self.model, cfg.OPTIM)
@@ -77,20 +78,27 @@ class Split(TrainerX):
         out1, out2 = self.model(input, mode="train")
         
         loss1 = F.cross_entropy(out1, label)
-        loss2 = F.cross_entropy(out2, label)
-        
+        loss2 = F.cross_entropy(out2, domain)
+
         loss_g = 0
-        if self.epoch <= self.max_epoch//2:
-            loss_g += loss1
-        else:
-            loss_g += (loss1 - loss2)
+        loss_g += (loss1 + loss2)
+
+        # if self.epoch <= self.max_epoch//2:
+        #     loss_g += loss1
+        # else:
+        #     loss_g += (loss1 - loss2)
 
         self.model_backward_and_update(loss_g, "model")
-        loss_summary = {"loss_g":loss_g.item()}
+        loss_summary = {
+            "loss_g":loss_g.item(),
+            "loss_label": loss1.item(),
+            "loss_domain": loss2.item()
+            }
 
-        if (self.batch_idx + 1) == self.num_batches:
+        # if (self.batch_idx + 1) == self.num_batches:
+        if (self.batch_idx + 1) // 10 == 0:
             self.update_lr()
         return loss_summary
 
     def model_inference(self, input):
-        return self.model(input, mode="self-test")
+        return self.model(input, mode="test")

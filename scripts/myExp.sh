@@ -8,7 +8,7 @@ D4=sketch
 
 for SEED in $(seq 1 1)
 do
-    for SETUP in $(seq 1 4)
+    for SETUP in $(seq 1 1)
     do
         if [ ${SETUP} == 1 ]; then
             S1=${D2}
@@ -32,14 +32,14 @@ do
             T=${D4}
         fi
 
-        CUDA_VISIBLE_DEVICES=0 python tools/train.py \
+        CUDA_VISIBLE_DEVICES=0 python ./tools/train.py \
         --root $DATA \
         --seed ${SEED} \
         --trainer Split \
         --source-domains ${S1} ${S2} ${S3} \
         --target-domains ${T} \
         --dataset-config-file configs/datasets/dg/pacs.yaml \
-        --config-file configs/trainers/dg/myExp/pacs.yaml \
-        --output-dir output/SplitNet/${T}/
+        --config-file configs/trainers/dg/myExp/pacs_split.yaml \
+        --output-dir output/SplitNet_spatial/${T}/
     done
 done

@@ -59,13 +59,18 @@ class CLS(nn.Module):
 
 
 class featureSplitNet(nn.Module):
-    def __init__(self):
-        super().__init__(cfg)
+    def __init__(self, FE_mode = "uncertanty", domain_num = 4):
+        super().__init__()
+        self.FE_mode = "uncertanty"
+        self.domain_num = domain_num
         self.featureExtractor = resnetFeatureExtractor()
-        self.classifier_train = CLS(self.featureExtractor.fletch() // 2, 7)
-        self.classifier_eval = CLS(self.featureExtractor.fletch(), 7)
+        # self.classifier_train = CLS(self.featureExtractor.fletch() // 2, 7)
+        # self.classifier_eval = CLS(self.featureExtractor.fletch(), 7)
+        self.cls_label = CLS(self.featureExtractor.fletch(), 7)
+        self.cls_domain = CLS(self.featureExtractor.fletch(), domain_num)
+        self.adaptiveAvePool = nn.AdaptiveAvgPool2d((1,1))
 
-    def splitFeature(self, feature, chunks= 2,dim=2):
+    def splitFeature(self, feature, chunks= 2,dim=2):# B C H W
         (x1, x2) = torch.chunk(feature, chunks, dim=dim)
         return x1, x2
 
@@ -73,10 +78,13 @@ class featureSplitNet(nn.Module):
         """
         mode = train/test/self-test
         """
-        x = self.featureExtractor(x)
+        x = self.featureExtractor(x, mode = self.FE_mode)
         x1, x2 = self.splitFeature(x, chunks)
 
-        # feature = x2
+        # Adaptive Average Pooling
+        if self.FE_mode == "uncertanty":
+            x1 = self.adaptiveAvePool(x1)
+            x2 = self.adaptiveAvePool(x2)
 
         if glob:  # add global average pooling
             c = F.adaptive_avg_pool3d(x, (1, 1, 1))
@@ -86,13 +94,13 @@ class featureSplitNet(nn.Module):
             x1 = self.classifier_eval(x1)
             x2 = self.classifier_eval(x2)
         else:
-            x1 = self.classifier_train(x1)
-            x2 = self.classifier_train(x2)
+            x1 = self.cls_label(x1)
+            x2 = self.cls_domain(x2)
 
         if mode == "train":
             return x1, x2
         elif mode == "test":
-            return self.classifier_eval(x)
+            return x1
         elif mode == "self-test":
             return x1
 

@@ -1,2 +1,19 @@
 可以利用`tools/parse_test_res.py`计算详细的结果
-This modify is used for test git
+
+### 操作记录
+在vscode上使用Github。首先初始化库，然后在三个点那里找到推送，点击，选择在Github上，然后找到你想要存放文件的库，如果是第一次使用，应该在网站上先建立一个新的库。
+
+[Github](https://github.com/Baymine/Dassl)
+
+Note:
+服务器要用得恰到好处
+
+TODO:
+- [ ] 在网络中输出可视化图像
+- [ ] 将空间维度进行切分（W & H）
+  - [ ] 进行对抗训练
+    - [ ] 预测结果，一个预测结果差，一个好（交叉训练）
+    - [ ] 要求二者预测结果之间的差异要大（KL散度）
+  - [ ] 富集信息
+    - [ ] 两个子特征的结果都要好（先尝试这个） 
+- [ ] 构建不确定模型(Uncertanty Modeling)

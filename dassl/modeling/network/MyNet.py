@@ -59,7 +59,7 @@ class CLS(nn.Module):
 
 
 class featureSplitNet(nn.Module):
-    def __init__(self, FE_mode = "uncertanty", domain_num = 4):
+    def __init__(self, FE_mode = "uncertanty", domain_num = 7):
         super().__init__()
         self.FE_mode = "uncertanty"
         self.domain_num = domain_num
@@ -85,6 +85,7 @@ class featureSplitNet(nn.Module):
         if self.FE_mode == "uncertanty":
             x1 = self.adaptiveAvePool(x1)
             x2 = self.adaptiveAvePool(x2)
+            x = self.adaptiveAvePool(x)
 
         if glob:  # add global average pooling
             c = F.adaptive_avg_pool3d(x, (1, 1, 1))
@@ -102,7 +103,7 @@ class featureSplitNet(nn.Module):
         elif mode == "test":
             return x1
         elif mode == "self-test":
-            return x1
+            return (x1 + x2)/2
 
 def uncertantyModeling(feature):
     mu = torch.mean(feature, (2, 3))

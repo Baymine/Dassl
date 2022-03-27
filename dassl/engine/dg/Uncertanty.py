@@ -78,7 +78,8 @@ class Split(TrainerX):
         out1, out2 = self.model(input, mode="train")
         
         loss1 = F.cross_entropy(out1, label)
-        loss2 = F.cross_entropy(out2, domain)
+        # loss2 = F.cross_entropy(out2, domain)
+        loss2 = F.cross_entropy(out2, label)
 
         loss_g = 0
         loss_g += (loss1 + loss2)
@@ -95,8 +96,8 @@ class Split(TrainerX):
             "loss_domain": loss2.item()
             }
 
-        # if (self.batch_idx + 1) == self.num_batches:
-        if (self.batch_idx + 1) // 10 == 0:
+        if (self.batch_idx + 1) == self.num_batches:
+        # if (self.batch_idx + 1) // 10 == 0:
             self.update_lr()
         return loss_summary
 

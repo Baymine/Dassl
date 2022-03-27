@@ -59,10 +59,16 @@ class CLS(nn.Module):
 
 
 class featureSplitNet(nn.Module):
-    def __init__(self, FE_mode = "uncertanty", domain_num = 7):
+    def __init__(
+        self, 
+        FE_mode = "uncertanty", 
+        domain_num = 7,
+        num_chunk_dim = 2
+    ):
         super().__init__()
-        self.FE_mode = "uncertanty"
+        self.FE_mode = FE_mode  # 特征提取器的模式
         self.domain_num = domain_num
+        self.num_chunk_dim = num_chunk_dim
         self.featureExtractor = resnetFeatureExtractor()
         # self.classifier_train = CLS(self.featureExtractor.fletch() // 2, 7)
         # self.classifier_eval = CLS(self.featureExtractor.fletch(), 7)
@@ -70,7 +76,7 @@ class featureSplitNet(nn.Module):
         self.cls_domain = CLS(self.featureExtractor.fletch(), domain_num)
         self.adaptiveAvePool = nn.AdaptiveAvgPool2d((1,1))
 
-    def splitFeature(self, feature, chunks= 2,dim=2):# B C H W
+    def splitFeature(self, feature, chunks= 2,dim=3):# B C H W
         (x1, x2) = torch.chunk(feature, chunks, dim=dim)
         return x1, x2
 
@@ -79,7 +85,17 @@ class featureSplitNet(nn.Module):
         mode = train/test/self-test
         """
         x = self.featureExtractor(x, mode = self.FE_mode)
-        x1, x2 = self.splitFeature(x, chunks)
+
+        # 将空间维度合并后再进行划分
+        if self.num_chunk_dim == 2:
+            B,C,H,W = x.size()
+            x_view = x.view(B, C, -1)
+            x1, x2 = self.splitFeature(x_view, dim=-1)
+            x1 = torch.unsqueeze(x1, 3)
+            x2 = torch.unsqueeze(x2, 3)
+        else:
+            x1, x2 = self.splitFeature(x, chunks)
+
 
         # Adaptive Average Pooling
         if self.FE_mode == "uncertanty":
@@ -101,7 +117,7 @@ class featureSplitNet(nn.Module):
         if mode == "train":
             return x1, x2
         elif mode == "test":
-            return x1
+            return self.cls_label(x)
         elif mode == "self-test":
             return (x1 + x2)/2
 

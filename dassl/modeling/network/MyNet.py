@@ -1,3 +1,4 @@
+from tkinter.tix import InputOnly
 import torch
 from torch.nn import functional as F
 import torch.nn as nn
@@ -5,6 +6,7 @@ from torchvision import models
 
 from .build import NETWORK_REGISTRY
 import random
+import numpy as np
 
 
 # Feature extractor
@@ -27,7 +29,6 @@ class resnetFeatureExtractor(nn.Module):
                 if type(block) != nn.Linear and type(block) != nn.AdaptiveAvgPool2d:
                     x = block(x)
             return x
-
 
 class bottleNet(nn.Module):
     def __init__(self, in_dim, bottle_net_dim=256):
@@ -55,6 +56,48 @@ class CLS(nn.Module):
 
         out = self.fc(out)
         return self.softmax(out)
+
+class DistributionUncertainty(nn.Module):
+    """
+    Distribution Uncertainty Module
+        Args:
+        p   (float): probabilty of foward distribution uncertainty module, p in [0,1].
+
+    """
+
+    def __init__(self, p=0.5, eps=1e-6):
+        super(DistributionUncertainty, self).__init__()
+        self.eps = eps
+        self.p = p
+        self.factor = 1.0
+
+    # 重参数化
+    def _reparameterize(self, mu, std):
+        epsilon = torch.randn_like(std) * self.factor
+        return mu + epsilon * std
+
+    def sqrtvar(self, x):
+        t = (x.var(dim=0, keepdim=True) + self.eps).sqrt()  # 注意这里是求平方根
+        t = t.repeat(x.shape[0], 1)  # ？？？？
+        return t
+
+    def forward(self, x):
+        if (not self.training) or (np.random.random()) > self.p:
+            return x
+
+        mean = x.mean(dim=[2, 3], keepdim=False)
+        std = (x.var(dim=[2, 3], keepdim=False) + self.eps).sqrt()
+
+        sqrtvar_mu = self.sqrtvar(mean)
+        sqrtvar_std = self.sqrtvar(std)
+
+        beta = self._reparameterize(mean, sqrtvar_mu)
+        gamma = self._reparameterize(std, sqrtvar_std)
+
+        x = (x - mean.reshape(x.shape[0], x.shape[1], 1, 1)) / std.reshape(x.shape[0], x.shape[1], 1, 1)
+        x = x * gamma.reshape(x.shape[0], x.shape[1], 1, 1) + beta.reshape(x.shape[0], x.shape[1], 1, 1)
+
+        return x
 
 class featureSplitNet(nn.Module):
     def __init__(
@@ -132,6 +175,7 @@ class UncertaintyNet(nn.Module):
         # self.adaAvePooling = F.adaptive_avg_pool2d
         self.prob = 0.5
         self.cls = CLS(self.fc_in, num_classes)
+        self.uncertainty = DistributionUncertainty()
 
     def uncertaintyModeling(self, feature, eps=1e-6):
         mu = torch.mean(feature, (2, 3))
@@ -161,13 +205,22 @@ class UncertaintyNet(nn.Module):
         self.prob = 1
         x = self.featureExtractor(x, mode="uncertanty") # B 512 7 7
 
-        # if random.random() <= self.prob:
-        if 1:
-            x1 = self.uncertaintyModeling(x)
-            x2 = self.uncertaintyModeling(x)
-        else:
-            x1 = x
-            x2 = x
+        # if random.random() <= 0.5:
+        # # if 0:
+        #     x1 = self.uncertaintyModeling(x)
+        #     x2 = x
+        #     # if random.random() <= 0.5:
+        #     #     x1 = self.uncertaintyModeling(x)
+        #     #     x2 = x
+        #     # else:
+        #     #     x1 = self.uncertaintyModeling(x)
+        #     #     x2 = self.uncertaintyModeling(x)
+        #     # # x2 = self.uncertaintyModeling(x)
+        # else:
+        x1 = x
+        x2 = x
+        # x1 = self.uncertainty(x)
+        # x2 = self.uncertainty(x)
 
         x = torch.cat((x1, x2), dim=1)
         x = F.adaptive_avg_pool2d(x, (1, 1)) # B 1026 1 1

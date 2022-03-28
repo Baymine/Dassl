@@ -23,7 +23,7 @@ CUDA_VISIBLE_DEVICES=0 python tools/train.py \
 --target-domains art_painting \
 --dataset-config-file configs/datasets/dg/pacs.yaml \
 --config-file configs/trainers/dg/myExp/pacs_Uncertainty.yaml \
---output-dir output/test
+--output-dir output/Uncertainty_V2.1/art_painting
 
 # On Pacs SplitNet
 # CUDA_VISIBLE_DEVICES=0 python tools/train.py \

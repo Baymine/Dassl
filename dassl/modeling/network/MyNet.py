@@ -162,6 +162,24 @@ class featureSplitNet(nn.Module):
         elif mode == "self-test":
             return (x1 + x2)/2
 
+class UncertaintyBlock(nn.Module):
+    def __init__(self, p=0.5, eps=1e-6, dim=-1):
+        super(UncertaintyBlock, self).__init__()
+        self.uncertainty = DistributionUncertainty(p=p)
+        self.conv = None
+
+    def forward(self, feature):
+        x1 = self.uncertainty(feature)
+        x2 = self.uncertainty(feature)
+        x = torch.cat((x1, x2), dim=1)
+        self.conv = nn.Conv2d(feature.shape[1]*2, feature.shape[1], kernel_size=1)
+        self.conv.cuda()
+
+        x = self.conv(x)
+
+        return x
+
+
 class UncertaintyNet(nn.Module):
     def __init__(
         self, num_classes = 7
@@ -174,8 +192,87 @@ class UncertaintyNet(nn.Module):
         self.bottle = bottleNet(self.fc_in * 2, self.fc_in)
         # self.adaAvePooling = F.adaptive_avg_pool2d
         self.prob = 0.5
-        self.cls = CLS(self.fc_in, num_classes)
+        self.num_classes = num_classes
+        self.cls = CLS(self.fc_in, self.num_classes)
         self.uncertainty = DistributionUncertainty()
+        # self.model = models.resnet18(pretrained=True)
+        self.perturbation = UncertaintyBlock()
+        self.Flatten = nn.Flatten(1,3)
+
+    def SFA(self, x, p=0.5):
+        if random.random() > 0.5:
+            return x
+        noisy = torch.rand(x.shape)
+        noisy = noisy.cuda()
+        x = x + noisy
+        return x
+
+    def forward(self, x):
+        # i = 0
+        # for block in list(self.model.children()):
+        #     if(type(block) == nn.Sequential or type(block)==nn.Conv2d):
+        #         x = block(x)
+        #         x = self.perturbation(x)
+        #         i += 1
+        #     elif type(block) == nn.Linear:
+        #         num_ftrs = self.model.fc.in_features   # 获取全连接层的输入大小
+        #         self.fc = nn.Linear(num_ftrs, self.num_classes)
+        #         self.Flatten.cuda()
+        #         self.fc.cuda()
+        #         x = self.Flatten(x)
+        #         x = self.fc(x)
+        #     else:
+        #         x = block(x)
+        # print("****** START ********")
+        # print(i)
+        # print("****** END *******")
+        # return x
+        # self.prob = 1
+        x = self.featureExtractor(x, mode="uncertanty") # B 512 7 7
+
+        # if random.random() <= 0.5:
+        # # if 0:
+        #     x1 = self.uncertaintyModeling(x)
+        #     x2 = x
+        #     # if random.random() <= 0.5:
+        #     #     x1 = self.uncertaintyModeling(x)
+        #     #     x2 = x
+        #     # else:
+        #     #     x1 = self.uncertaintyModeling(x)
+        #     #     x2 = self.uncertaintyModeling(x)
+        #     # # x2 = self.uncertaintyModeling(x)
+        # else:
+        # x1 = x
+        x2 = self.SFA(x)
+        x1 = self.uncertainty(x)
+        # x2 = self.uncertainty(x)
+
+        x = torch.cat((x1, x2), dim=1)
+        x = F.adaptive_avg_pool2d(x, (1, 1)) # B 1026 1 1
+        x = self.bottle(x)  # B 512
+
+        # x = torch.squeeze(x) # B 512
+        B, C = x.shape
+        x = x.view(B, C, 1, 1)
+        x = self.cls(x)
+        return x
+
+
+
+@NETWORK_REGISTRY.register()
+def FeatureSplitNet(**kwargs):
+    net = models.resnet18(pretrained=True)
+    return net
+
+@NETWORK_REGISTRY.register()
+def SplitNet(**kwargs):
+    SpNet = featureSplitNet()
+    return SpNet
+
+@NETWORK_REGISTRY.register()
+def Uncertainty(**kwargs):
+    net = UncertaintyNet()
+    return net
 
     def uncertaintyModeling(self, feature, eps=1e-6):
         mu = torch.mean(feature, (2, 3))
@@ -200,50 +297,3 @@ class UncertaintyNet(nn.Module):
         beta = beta.unsqueeze(2).unsqueeze(3)
 
         return torch.mul(gamma, (feature - mu)/(sigma+eps)) + beta
-
-    def forward(self, x):
-        self.prob = 1
-        x = self.featureExtractor(x, mode="uncertanty") # B 512 7 7
-
-        # if random.random() <= 0.5:
-        # # if 0:
-        #     x1 = self.uncertaintyModeling(x)
-        #     x2 = x
-        #     # if random.random() <= 0.5:
-        #     #     x1 = self.uncertaintyModeling(x)
-        #     #     x2 = x
-        #     # else:
-        #     #     x1 = self.uncertaintyModeling(x)
-        #     #     x2 = self.uncertaintyModeling(x)
-        #     # # x2 = self.uncertaintyModeling(x)
-        # else:
-        x1 = x
-        x2 = x
-        # x1 = self.uncertainty(x)
-        # x2 = self.uncertainty(x)
-
-        x = torch.cat((x1, x2), dim=1)
-        x = F.adaptive_avg_pool2d(x, (1, 1)) # B 1026 1 1
-        x = self.bottle(x)  # B 512
-
-        # x = torch.squeeze(x) # B 512
-        B, C = x.shape
-        x = x.view(B, C, 1, 1)
-        x = self.cls(x)
-        return x
-
-@NETWORK_REGISTRY.register()
-def FeatureSplitNet(**kwargs):
-    net = models.resnet18(pretrained=True)
-    return net
-
-@NETWORK_REGISTRY.register()
-def SplitNet(**kwargs):
-    SpNet = featureSplitNet()
-    return SpNet
-
-@NETWORK_REGISTRY.register()
-def Uncertainty(**kwargs):
-    net = UncertaintyNet()
-    return net
-

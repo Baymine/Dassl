@@ -2,6 +2,8 @@
 # dataset-config-file : 加载通常的数据设置
 # config-file : 加载算法的超参数和优化参数
 # output-dir : 结果输出路径
+# E:\Anaconda\envs\dassl\Library\home\USTCer\kaiyang\data
+
 
 cd ..
 DATA=~/kaiyang/data
@@ -23,7 +25,12 @@ CUDA_VISIBLE_DEVICES=0 python tools/train.py \
 --target-domains art_painting \
 --dataset-config-file configs/datasets/dg/pacs.yaml \
 --config-file configs/trainers/dg/myExp/pacs_Uncertainty.yaml \
---output-dir output/Uncertainty_V2.1/art_painting
+--output-dir output/Uncertainty_VTEST/art_painting
+
+# cd ..
+DIR="./output/Uncertainty_V2.5/"
+
+python tools/parse_test_res.py ${DIR} 
 
 # On Pacs SplitNet
 # CUDA_VISIBLE_DEVICES=0 python tools/train.py \

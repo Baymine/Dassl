@@ -18,7 +18,8 @@ class Uncertainty(TrainerX):
         cfg = self.cfg
 
         print("Building Feature Extractor")
-        self.Uncertainty = build_network(cfg.TRAINER.Uncertainty.G_ARCH, verbose=cfg.VERBOSE)
+        self.Uncertainty = build_network(cfg.TRAINER.Uncertainty.G_ARCH,
+                                            verbose=cfg.VERBOSE)
         self.Uncertainty.to(self.device)
         print("# params: {:,}".format(count_num_param(self.Uncertainty)))
         self.optim_U = build_optimizer(self.Uncertainty, cfg.OPTIM)
@@ -51,7 +52,11 @@ class Uncertainty(TrainerX):
         loss_g += F.cross_entropy(out, label)
         self.model_backward_and_update(loss_g, "Uncertainty")
 
-        loss_summary = {"loss_g":loss_g.item()}
+        from dassl.metrics import compute_accuracy
+        loss_summary = {
+            "loss_g":loss_g.item(),
+            "acc":compute_accuracy(out,label)[0].item()
+        }
         if (self.batch_idx + 1) == self.num_batches:
             self.update_lr()
         return loss_summary

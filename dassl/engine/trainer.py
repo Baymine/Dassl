@@ -521,7 +521,7 @@ class TrainerXU(SimpleTrainer):
         data_time = AverageMeter()
 
         # Decide to iterate over labeled or unlabeled dataset
-        len_train_loader_x = len(self.train_loader_x)  # 有标签数据batch规模
+        len_train_loader_x = len(self.train_loader_xtrain_loader_x)  # 有标签数据batch规模
         len_train_loader_u = len(self.train_loader_u)  # 无标签数据batch规模
         if self.cfg.TRAIN.COUNT_ITER == "train_x":
             self.num_batches = len_train_loader_x

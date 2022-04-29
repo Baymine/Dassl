@@ -3,7 +3,7 @@ DATA=~/kaiyang/data
 
 # On office-home
 CUDA_VISIBLE_DEVICES=0 python tools/train.py \
---root $DATA \
+--root ${DATA} \
 --trainer Uncertainty \
 --source-domains art clipart product \
 --target-domains real_world \
